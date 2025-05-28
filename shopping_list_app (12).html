@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping List App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .app-container {
+            width: 90%;
+            max-width: 600px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+        input, select, button {
+            margin-bottom: 10px;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .item-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            position: relative;
+        }
+        .item img {
+            max-width: 50px;
+            max-height: 50px;
+            margin-right: 10px;
+        }
+        .item.completed {
+            text-decoration: line-through;
+        }
+        .delete-btn {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .swipe-to-delete {
+            position: absolute;
+            top: 0;
+            right: -100px;
+            width: 100px;
+            height: 100%;
+            background-color: red;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: right 0.3s;
+        }
+        .item.swiped .swipe-to-delete {
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>Shopping List</h1>
+        <form id="item-form">
+            <input type="text" id="item-name" placeholder="Item Name" required>
+            <select id="item-category" required>
+                <option value="" disabled selected>Select Category</option>
+                <option value="Groceries">Groceries</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Clothing">Clothing</option>
+                <option value="Costco">Costco</option>
+            </select>
+            <input type="url" id="item-image-url" placeholder="Image URL (optional)">
+            <button type="submit">Add Item</button>
+        </form>
+        <ul id="item-list" class="item-list"></ul>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const itemForm = document.getElementById('item-form');
+            const itemList = document.getElementById('item-list');
+
+            itemForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                const itemName = document.getElementById('item-name').value;
+                const itemCategory = document.getElementById('item-category').value;
+                const itemImageUrl = document.getElementById('item-image-url').value;
+
+                addItem(itemName, itemCategory, itemImageUrl);
+                saveItem(itemName, itemCategory, itemImageUrl);
+                itemForm.reset();
+            });
+
+            function addItem(name, category, imageUrl) {
+                const item = document.createElement('li');
+                item.className = 'item';
+                item.innerHTML = `
+                    <span>${name} (${category})</span>
+                    ${imageUrl ? `<img src="${imageUrl}" alt="${name}">` : ''}
+                    <input type="checkbox" class="complete-checkbox">
+                    <div class="swipe-to-delete">Delete</div>
+                `;
+                itemList.appendChild(item);
+
+                const checkbox = item.querySelector('.complete-checkbox');
+                checkbox.addEventListener('change', function() {
+                    item.classList.toggle('completed', checkbox.checked);
+                    saveItems();
+                });
+
+                const swipeToDelete = item.querySelector('.swipe-to-delete');
+                swipeToDelete.addEventListener('click', function() {
+                    itemList.removeChild(item);
+                    saveItems();
+                });
+
+                let startX;
+                item.addEventListener('touchstart', function(event) {
+                    startX = event.touches[0].clientX;
+                });
+
+                item.addEventListener('touchmove', function(event) {
+                    const touch = event.touches[0];
+                    const change = startX - touch.clientX;
+                    if (change > 0) {
+                        item.classList.add('swiped');
+                    } else {
+                        item.classList.remove('swiped');
+                    }
+                });
+
+                item.addEventListener('touchend', function() {
+                    if (!item.classList.contains('swiped')) {
+                        item.classList.remove('swiped');
+                    }
+                });
+            }
+
+            function saveItem(name, category, imageUrl) {
+                const items = JSON.parse(localStorage.getItem('items')) || [];
+                items.push({ name, category, imageUrl, completed: false });
+                localStorage.setItem('items', JSON.stringify(items));
+            }
+
+            function saveItems() {
+                const items = [];
+                itemList.querySelectorAll('.item').forEach(item => {
+                    const name = item.querySelector('span').textContent.split(' (')[0];
+                    const category = item.querySelector('span').textContent.split(' (')[1].slice(0, -1);
+                    const imageUrl = item.querySelector('img') ? item.querySelector('img').src : '';
+                    const completed = item.querySelector('.complete-checkbox').checked;
+                    items.push({ name, category, imageUrl, completed });
+                });
+                localStorage.setItem('items', JSON.stringify(items));
+            }
+
+            function loadItems() {
+                const items = JSON.parse(localStorage.getItem('items')) || [];
+                items.forEach(item => {
+                    addItem(item.name, item.category, item.imageUrl);
+                    const listItem = itemList.lastChild;
+                    listItem.querySelector('.complete-checkbox').checked = item.completed;
+                    listItem.classList.toggle('completed', item.completed);
+                });
+            }
+
+            loadItems();
+        });
+    </script>
+</body>
+</html>
